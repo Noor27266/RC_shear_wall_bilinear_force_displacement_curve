@@ -41,7 +41,7 @@ try:
 except Exception:
     _tf_load_model = None
 try:
-    from keras.models import load_model as _k3_load_model   # works when keras==3 is present
+    from keras.models import load_model as _k3_load_model
 except Exception:
     _k3_load_model = None
 
@@ -78,7 +78,7 @@ css = lambda s: st.markdown(s, unsafe_allow_html=True)
 def b64(path: Path) -> str:
     # safe: return "" if not found
     try:
-        if path.exists():
+        if path and path.exists():
             return base64.b64encode(path.read_bytes()).decode("ascii")
     except Exception:
         pass
@@ -315,7 +315,6 @@ css(
 # =============================================================================
 # 🏷️ LOGO LOADING FOR LEFT PANEL  (UNCHANGED STYLE)
 # =============================================================================
-# keep same behavior but make it safe: try TJU logo, else logo2-01
 _logo_file = pfind(["TJU logo.png", "logo2-01.png"], must_exist=False)
 _b64 = b64(_logo_file) if _logo_file else ""
 
@@ -339,7 +338,6 @@ TAG = {
 }
 
 class _ScalerShim:
-    """Wrapper to keep X / y scalers together for ANN models (4 outputs)."""
     def __init__(self, X_scaler, Y_scaler):
         self.Xs = X_scaler
         self.Ys = Y_scaler
@@ -386,13 +384,7 @@ except Exception as e:
 # ---------------------------- Random Forest (MULTI-OUTPUT) -------------------
 rf_model = None
 try:
-    rf_path = pfind([
-        "Best_RF_Model.pkl",
-        "random_forest_model.pkl",
-        "random_forest_model.joblib",
-        "rf_model.pkl",
-        "RF_model.pkl",
-    ])
+    rf_path = pfind(["Best_RF_Model.pkl", "rf_model.pkl", "RF_model.pkl"])
     rf_model = joblib.load(rf_path)
     record_health("Random Forest", True, f"loaded with joblib from {rf_path}")
 except Exception as e:
@@ -481,6 +473,7 @@ R = {
 
 U = lambda s: rf"\;(\mathrm{{{s}}})"
 
+# ✅ CHANGE 1: M/(Vlw) REMOVED from Geometry and will be placed under fybl
 GEOM = [
     (rf"$l_w{U('mm')}$", "lw", 1000.0, 1.0, None, "Length"),
     (rf"$h_w{U('mm')}$", "hw", 495.0, 1.0, None, "Height"),
@@ -488,18 +481,18 @@ GEOM = [
     (rf"$b_0{U('mm')}$", "b0", 200.0, 1.0, None, "Boundary element width"),
     (rf"$d_b{U('mm')}$", "db", 400.0, 1.0, None, "Boundary element length"),
     (r"$AR$", "AR", 2.0, 0.01, None, "Aspect ratio"),
-    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
 ]
 
+# ✅ CHANGE 1: M/(Vlw) ADDED at end so it appears below fybl
 MATS = [
     (rf"$f'_c{U('MPa')}$", "fc", 40.0, 0.1, None, "Concrete strength"),
     (rf"$f_{{yt}}{U('MPa')}$", "fyt", 400.0, 1.0, None, "Transverse web yield strength"),
     (rf"$f_{{ysh}}{U('MPa')}$", "fysh", 400.0, 1.0, None, "Transverse boundary yield strength"),
     (rf"$f_{{yl}}{U('MPa')}$", "fyl", 400.0, 1.0, None, "Vertical web yield strength"),
     (rf"$f_{{ybl}}{U('MPa')}$", "fybl", 400.0, 1.0, None, "Vertical boundary yield strength"),
+    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
 ]
 
-# theta row REMOVED only
 REINF = [
     (r"$\rho_t\;(\%)$", "rt", 0.25, 0.0001, "%.6f", "Transverse web ratio"),
     (r"$\rho_{sh}\;(\%)$", "rsh", 0.25, 0.0001, "%.6f", "Transverse boundary ratio"),
@@ -567,16 +560,18 @@ with left:
 
     with c1:
         st.markdown("<div class='section-header'>Geometry </div>", unsafe_allow_html=True)
-        lw, hw, tw, b0, db, AR, M_Vlw = [num(*row) for row in GEOM]
+        # ✅ unpack updated (M_Vlw removed from Geometry)
+        lw, hw, tw, b0, db, AR = [num(*row) for row in GEOM]
 
     with c2:
         st.markdown("<div class='section-header'>Reinf. Ratios </div>", unsafe_allow_html=True)
-        rt, rsh, rl, rbl, s_db, axial = [num(*row) for row in REINF]  # theta removed
+        rt, rsh, rl, rbl, s_db, axial = [num(*row) for row in REINF]
 
     with c3:
         st.markdown("<div class='section-header'>Material Strengths</div>", unsafe_allow_html=True)
+        # ✅ unpack updated: M_Vlw now comes after fybl here
         fc, fyt, fysh = [num(*row) for row in MATS[:3]]
-        fyl, fybl = [num(*row) for row in MATS[3:]]
+        fyl, fybl, M_Vlw = [num(*row) for row in MATS[3:]]
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -597,9 +592,6 @@ SCHEM2_OFFSET_Y = -40
 CHART_W = 350
 
 with right:
-
-    # --- TWO schematics side by side in fixed-height box ---
-    # IMPORTANT FIX: use safe pfind and b64 so Streamlit Cloud won't crash
     img1 = pfind(["logo2-01.png", "TJU logo.png"], must_exist=False)
     img2 = pfind(["RC shear wall schematic2.png"], must_exist=False)
 
@@ -634,17 +626,11 @@ with right:
 
     col_plot, col_controls = st.columns([3, 1])
 
-    # =============================================================================
-    # ⭐ SUB-STEP 7.1 — OUTPUT AREA (LEFT SIDE) (SAME SLOT AS YOUR DI PLOT)
-    # =============================================================================
+    # keep slot but we won't use it now (output moved below inputs)
     with col_plot:
         chart_slot = st.empty()
 
-    # =============================================================================
-    # ⭐ SUB-STEP 7.2 — MODEL SELECTION + BUTTONS (RIGHT SIDE) - UNCHANGED
-    # =============================================================================
     with col_controls:
-
         available = set(model_registry.keys())
         ordered_keys = [m for m in MODEL_ORDER if m in available] or ["(no models loaded)"]
         display_labels = ["RF" if m == "Random Forest" else m for m in ordered_keys]
@@ -655,7 +641,6 @@ with right:
             key="model_select_compact",
         )
         model_choice = LABEL_TO_KEY.get(model_choice_label, model_choice_label)
-
         st.session_state["model_choice"] = model_choice
 
         if "do_calculation" not in st.session_state:
@@ -713,10 +698,15 @@ div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
 
 
 # =============================================================================
+# ✅ CHANGE 2: OUTPUT AREA BELOW INPUTS (NEW SLOT)
+# =============================================================================
+output_below_inputs = st.container()
+
+
+# =============================================================================
 # ⚡ STEP 8: BILINEAR PREDICTION + OUTPUT DISPLAY (THETA REMOVED, 4 OUTPUTS)
 # =============================================================================
 
-# --- training name map (same style as your DI code, but θ removed)
 _TRAIN_NAME_MAP = {
     "l_w": "lw",
     "h_w": "hw",
@@ -757,7 +747,6 @@ def predict_4(choice, input_df):
     df_trees = _df_in_train_order(input_df).replace([np.inf,-np.inf],np.nan).fillna(0.0)
     X = df_trees.values.astype(np.float32)
 
-    # ----- 4-output dict -----
     if choice == "LightGBM":
         return {out: float(model_registry["LightGBM"][out].predict(X)[0]) for out in OUTPUTS}
 
@@ -806,9 +795,6 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     ax.grid(True, alpha=0.3)
     return fig
 
-# =============================================================================
-# MAIN PREDICTION LOGIC (SAME PATTERN AS YOUR DI)
-# =============================================================================
 
 model_choice = st.session_state.get("model_choice", None)
 if not model_choice:
@@ -837,7 +823,10 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.error(f"Prediction error: {str(e)}")
         st.session_state.do_calculation = False
 
-# Always display outputs if we have results (use same chart_slot area)
+
+# =============================================================================
+# ✅ CHANGE 2: DISPLAY OUTPUTS BELOW INPUTS (TABLE + PLOT)
+# =============================================================================
 if not st.session_state.results_df.empty:
     last = st.session_state.results_df.iloc[-1]
 
@@ -846,9 +835,7 @@ if not st.session_state.results_df.empty:
     Du = float(last["Du (mm)"])
     Fu = float(last["Fu (kN)"])
 
-    with chart_slot.container():
-        st.markdown("<div style='margin-top:150px;'>", unsafe_allow_html=True)
-
+    with output_below_inputs:
         out_df = pd.DataFrame({
             "Output": OUTPUTS,
             "Predicted": [Dy, Fy, Du, Fu]
@@ -857,8 +844,6 @@ if not st.session_state.results_df.empty:
 
         fig = plot_bilinear(Dy, Fy, Du, Fu)
         st.pyplot(fig, use_container_width=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # =============================================================================
