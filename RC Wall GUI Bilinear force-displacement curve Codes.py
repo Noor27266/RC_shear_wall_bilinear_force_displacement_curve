@@ -488,7 +488,7 @@ GEOM = [
     (rf"$b_0{U('mm')}$", "b0", 200.0, 1.0, None, "Boundary element width"),
     (rf"$d_b{U('mm')}$", "db", 400.0, 1.0, None, "Boundary element length"),
     (r"$AR$", "AR", 2.0, 0.01, None, "Aspect ratio"),
-    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
+    
 ]
 
 MATS = [
@@ -497,6 +497,7 @@ MATS = [
     (rf"$f_{{ysh}}{U('MPa')}$", "fysh", 400.0, 1.0, None, "Transverse boundary yield strength"),
     (rf"$f_{{yl}}{U('MPa')}$", "fyl", 400.0, 1.0, None, "Vertical web yield strength"),
     (rf"$f_{{ybl}}{U('MPa')}$", "fybl", 400.0, 1.0, None, "Vertical boundary yield strength"),
+    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
 ]
 
 # theta row REMOVED only
@@ -881,3 +882,4 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
