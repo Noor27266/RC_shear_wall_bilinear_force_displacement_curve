@@ -2,7 +2,11 @@ DOC_NOTES = """
 RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI
 - Theta removed
 - 4 outputs: Dy (mm), Fy (kN), Du (mm), Fu (kN)
-- ONLY change: move bilinear curve UP + make it BIGGER
+- M/(Vlw) placed under fybl
+- Wall pictures removed
+- Graph moved to the SAME place (top-right big area)
+- Output table is BELOW the graph (right panel)
+- Graph moved UP + made BIGGER (only)
 """
 
 # =============================================================================
@@ -135,8 +139,11 @@ def pfind(candidates, must_exist=True):
 # =============================================================================
 # 🎨 STEP 3: STREAMLIT PAGE CONFIGURATION & UI STYLING
 # =============================================================================
-st.set_page_config(page_title="RC Shear Wall Bilinear Curve Estimator",
-                   layout="wide", page_icon="🧱")
+st.set_page_config(
+    page_title="RC Shear Wall Bilinear Curve Estimator",
+    layout="wide",
+    page_icon="🧱",
+)
 
 st.markdown(
     """
@@ -146,12 +153,6 @@ header[data-testid="stHeader"]{ height:0 !important; padding:0 !important; backg
 header[data-testid="stHeader"] *{ display:none !important; }
 section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem !important; }
 .vega-embed, .vega-embed .chart-wrapper{ max-width:100% !important; }
-
-/* ✅ THIS ALWAYS WORKS: MOVE ONLY THE PLOT WRAPPER UP */
-.plotwrap{
-  position: relative !important;
-  top: -550px !important;    /* CHANGED: Increased from -420px to -550px to move up more */
-}
 </style>
 """,
     unsafe_allow_html=True,
@@ -321,7 +322,7 @@ try:
     ann_mlp_proc = _ScalerShim(sx, sy)
     record_health("MLP (ANN)", True, f"loaded from {mlp_model_path}")
 except Exception as e:
-    record_health("MLP (ANN)", False, f"{e}")
+    record_health("MLP (ANN)", False, str(e))
 
 rf_model = None
 try:
@@ -494,7 +495,8 @@ with left:
 # 🎮 STEP 7: RIGHT PANEL - GRAPH PLACE + CONTROLS
 # =============================================================================
 with right:
-    st.markdown("<div style='height:300px; margin-bottom:0;'></div>", unsafe_allow_html=True)
+    # ✅ CHANGED ONLY: spacer reduced (was 300px)
+    st.markdown("<div style='height:40px; margin-bottom:0;'></div>", unsafe_allow_html=True)
 
     col_plot, col_controls = st.columns([3, 1])
 
@@ -529,12 +531,14 @@ with right:
 
         if not st.session_state.results_df.empty:
             csv = st.session_state.results_df.to_csv(index=False)
-            st.download_button("📂 Download as CSV",
-                               data=csv,
-                               file_name="bilinear_predictions.csv",
-                               mime="text/csv",
-                               use_container_width=True,
-                               key="dl_csv")
+            st.download_button(
+                "📂 Download as CSV",
+                data=csv,
+                file_name="bilinear_predictions.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="dl_csv",
+            )
 
 css("""
 <style>
@@ -614,25 +618,16 @@ def predict_4(choice, input_df):
     return {out: 0.0 for out in OUTPUTS}
 
 
-# ✅ ONLY CHANGE: BIGGER PLOT with bigger axis labels and numbers
 def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
-
-    # CHANGED: Bigger figure size and bigger font sizes
-    fig, ax = plt.subplots(figsize=(13.0, 7.5), dpi=200)
-    ax.plot(x, y, marker="o", linewidth=2.5)
-    
-    # CHANGED: Bigger axis labels
-    ax.set_xlabel("Displacement (mm)", fontsize=14, fontweight='bold')
-    ax.set_ylabel("Force (kN)", fontsize=14, fontweight='bold')
-    
-    # CHANGED: Bigger tick labels
-    ax.tick_params(axis='both', which='major', labelsize=12)
-    
-    ax.grid(True, alpha=0.25)
-    fig.tight_layout()
+    # ✅ CHANGED ONLY: bigger plot
+    fig, ax = plt.subplots(figsize=(9.2, 4.4), dpi=200)
+    ax.plot(x, y, marker="o", linewidth=2)
+    ax.set_xlabel("Displacement (mm)")
+    ax.set_ylabel("Force (kN)")
+    ax.grid(True, alpha=0.3)
     return fig
 
 
@@ -660,7 +655,7 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.session_state.do_calculation = False
 
 # =============================================================================
-# ✅ STEP 8.2: SHOW GRAPH (MOVED UP) + TABLE BELOW GRAPH
+# ✅ STEP 8.2: SHOW GRAPH + TABLE BELOW
 # =============================================================================
 with graph_slot:
     if not st.session_state.results_df.empty:
@@ -670,12 +665,13 @@ with graph_slot:
         Du = float(last["Du (mm)"])
         Fu = float(last["Fu (kN)"])
 
+        # ✅ CHANGED ONLY: move plot up (now works because spacer is small)
+        st.markdown("<div style='margin-top:-80px;'></div>", unsafe_allow_html=True)
+
         fig = plot_bilinear(Dy, Fy, Du, Fu)
 
-        # ✅ ONLY THIS moves the plot up
-        st.markdown("<div class='plotwrap'>", unsafe_allow_html=True)
-        st.pyplot(fig, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        # ✅ CHANGED ONLY: render at native size (so it really becomes bigger)
+        st.pyplot(fig, use_container_width=False)
 
         st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
         out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
