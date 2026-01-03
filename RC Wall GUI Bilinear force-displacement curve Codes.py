@@ -1,9 +1,13 @@
-# app.py
+DOC_NOTES = """
+RC Shear Wall Bilinear Force–Displacement Curve GUI
+- Predict 4 outputs: Dy (mm), Fy (kN), Du (mm), Fu (kN)
+- Theta removed from inputs
+- Supports: RF multi-output, ANN multi-output, CatBoost/XGBoost/LightGBM per-output models
+- Uses EXACT filenames as uploaded to your GitHub repo
+"""
+
 # ============================================================
-# RC Shear Wall - Bilinear Force–Displacement Curve GUI
-# 4 outputs: Dy (mm), Fy (kN), Du (mm), Fu (kN)
-# THETA REMOVED from inputs
-# Filenames MATCH your GitHub repo exactly
+# 🚀 STEP 1: CORE IMPORTS & ENVIRONMENT SETUP
 # ============================================================
 
 import os
@@ -16,7 +20,10 @@ import streamlit as st
 import joblib
 import matplotlib.pyplot as plt
 
-# --- Optional ML libs (load only if installed in requirements.txt) ---
+# ============================================================
+# 🚀 SUB STEP 1.1: OPTIONAL ML LIBRARIES (SAFE IMPORTS)
+# ============================================================
+
 try:
     from tensorflow.keras.models import load_model
 except Exception:
@@ -38,44 +45,62 @@ except Exception:
     lgb = None
 
 
-# =========================
-# PAGE CONFIG
-# =========================
+# ============================================================
+# 🚀 STEP 2: STREAMLIT PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(page_title="RC Wall Bilinear Curve GUI", layout="wide")
 
 
-# =========================
-# FILE FINDER (repo root + common folders)
-# =========================
+# ============================================================
+# 🚀 STEP 3: FILE SEARCH UTILITIES (ROBUST FOR STREAMLIT CLOUD)
+# ============================================================
+
 def pfind(fname: str) -> Path | None:
+    """
+    Find file in common locations:
+    - repo root
+    - models/ model/ assets/ data/
+    - fallback recursive search
+    """
     roots = [
-        Path("."), Path("./models"), Path("./model"), Path("./Model"),
-        Path("./assets"), Path("./data")
+        Path("."),
+        Path("./models"),
+        Path("./model"),
+        Path("./Model"),
+        Path("./assets"),
+        Path("./data"),
     ]
     for r in roots:
-        p = (r / fname)
+        p = r / fname
         if p.exists():
             return p.resolve()
 
-    # fallback: deep search
+    # fallback: recursive search
     for p in Path(".").rglob(fname):
         return p.resolve()
 
     return None
 
 
-# =========================
-# INPUT FEATURES (REMOVE THETA)
-# =========================
-# NOTE: Keep the same feature list you used in training.
-# If your bilinear training used different inputs, edit FEATURES + TRAIN_NAME_MAP.
+# ============================================================
+# 🚀 STEP 4: INPUT FEATURES (THETA REMOVED)
+# ============================================================
+
+# IMPORTANT:
+# Keep the SAME feature list/order used in your training.
+# If your bilinear model uses different columns, edit FEATURES + TRAIN_NAME_MAP below.
+
 FEATURES = [
     "bw", "L", "h", "fc", "fy",
     "ρt", "ρsh", "ρl", "ρbl",
     "a/d", "P"
 ]
 
-# Optional UI ranges (edit if you want)
+# ============================================================
+# 🚀 SUB STEP 4.1: UI RANGES (OPTIONAL; ADJUST IF NEEDED)
+# ============================================================
+
 R = {
     "bw":  (100.0, 500.0),
     "L":   (300.0, 3000.0),
@@ -86,18 +111,22 @@ R = {
     "ρsh": (0.10, 8.0),
     "ρl":  (0.10, 8.0),
     "ρbl": (0.10, 8.0),
-    "a/d": (0.5, 6.0),
-    "P":   (0.0, 0.60),
+    "a/d": (0.50, 6.00),
+    "P":   (0.00, 0.60),
 }
 
-# If your training used different column names, map GUI -> train here
-# If training used same names, set TRAIN_NAME_MAP = {}
+# ============================================================
+# 🚀 SUB STEP 4.2: COLUMN NAME MAPPING (GUI -> TRAINING)
+# ============================================================
+
+# If your training column names differ, map them here.
+# If training uses same names, set TRAIN_NAME_MAP = {}.
 TRAIN_NAME_MAP = {
     "ρt": "pt",
     "ρsh": "psh",
     "ρl": "pl",
     "ρbl": "pbl",
-    # change these if needed:
+    # Uncomment ONLY if your training used these names:
     # "a/d": "a_over_d",
     # "P": "axial_ratio",
 }
@@ -109,16 +138,17 @@ def to_train_columns(df_in: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# =========================
-# OUTPUTS / FILE TAGS (match your filenames)
-# =========================
+# ============================================================
+# 🚀 STEP 5: OUTPUT DEFINITIONS (4 OUTPUTS)
+# ============================================================
+
 OUTPUTS = ["Dy (mm)", "Fy (kN)", "Du (mm)", "Fu (kN)"]
 
-# These tags match exactly your file naming:
-# Best_*_Δymm  => Dy
-# Best_*_FykN  => Fy
-# Best_*_Δmmm  => Du
-# Best_*_FmkN  => Fu
+# These tags match your uploaded filenames:
+# Best_*_Δymm  -> Dy
+# Best_*_FykN  -> Fy
+# Best_*_Δmmm  -> Du
+# Best_*_FmkN  -> Fu
 TAG = {
     "Dy (mm)": "Δymm",
     "Fy (kN)": "FykN",
@@ -127,9 +157,10 @@ TAG = {
 }
 
 
-# =========================
-# MODEL FILENAMES (EXACT)
-# =========================
+# ============================================================
+# 🚀 STEP 6: MODEL FILENAMES (EXACT MATCH TO YOUR REPO)
+# ============================================================
+
 RF_FILE = "Best_RF_Model.pkl"
 
 ANN_MLP_FILE = "ANN_MLP_Model.keras"
@@ -145,6 +176,10 @@ XGB_PREFIX = "Best_XGBoost_"
 LGB_PREFIX = "Best_LightGBM_"
 
 
+# ============================================================
+# 🚀 STEP 7: SCALER SHIM (FOR .save FILES)
+# ============================================================
+
 class _ScalerShim:
     def __init__(self, scaler):
         self.scaler = scaler
@@ -154,15 +189,18 @@ class _ScalerShim:
         return self.scaler.inverse_transform(Y)
 
 
-# =========================
-# LOAD MODELS
-# =========================
+# ============================================================
+# 🚀 STEP 8: LOAD ALL MODELS (CACHED)
+# ============================================================
+
 @st.cache_resource(show_spinner=False)
 def load_all_models():
     models = {}
     health = {"loaded": [], "missing": [], "notes": []}
 
-    # --- RF (multi-output) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.1: RF (MULTI-OUTPUT)
+    # ------------------------------------------------------------
     p = pfind(RF_FILE)
     if p:
         try:
@@ -173,7 +211,9 @@ def load_all_models():
     else:
         health["missing"].append(RF_FILE)
 
-    # --- ANN MLP (multi-output) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.2: ANN MLP (MULTI-OUTPUT)
+    # ------------------------------------------------------------
     if load_model is not None:
         pm = pfind(ANN_MLP_FILE)
         psx = pfind(ANN_MLP_SX)
@@ -188,11 +228,13 @@ def load_all_models():
             except Exception as e:
                 health["missing"].append(f"{ANN_MLP_FILE} (error: {e})")
         else:
-            health["missing"].append(f"{ANN_MLP_FILE} / scalers")
+            health["missing"].append(f"{ANN_MLP_FILE} / scalers not found")
     else:
-        health["notes"].append("TensorFlow not available -> ANN models disabled.")
+        health["notes"].append("TensorFlow not available -> ANN MLP disabled.")
 
-    # --- ANN PS (multi-output) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.3: ANN PS (MULTI-OUTPUT)
+    # ------------------------------------------------------------
     if load_model is not None:
         pm = pfind(ANN_PS_FILE)
         psx = pfind(ANN_PS_SX)
@@ -207,9 +249,13 @@ def load_all_models():
             except Exception as e:
                 health["missing"].append(f"{ANN_PS_FILE} (error: {e})")
         else:
-            health["missing"].append(f"{ANN_PS_FILE} / scalers")
+            health["missing"].append(f"{ANN_PS_FILE} / scalers not found")
+    else:
+        health["notes"].append("TensorFlow not available -> ANN PS disabled.")
 
-    # --- CatBoost (4 separate models) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.4: CATBOOST (4 SEPARATE MODELS)
+    # ------------------------------------------------------------
     if CatBoostRegressor is not None:
         cat = {}
         ok = True
@@ -234,7 +280,9 @@ def load_all_models():
     else:
         health["notes"].append("CatBoost not available -> CatBoost disabled.")
 
-    # --- XGBoost (4 separate models) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.5: XGBOOST (4 SEPARATE MODELS)
+    # ------------------------------------------------------------
     if xgb is not None:
         xb = {}
         ok = True
@@ -259,7 +307,9 @@ def load_all_models():
     else:
         health["notes"].append("XGBoost not available -> XGBoost disabled.")
 
-    # --- LightGBM (4 separate models) ---
+    # ------------------------------------------------------------
+    # 🚀 SUB STEP 8.6: LIGHTGBM (4 SEPARATE MODELS)
+    # ------------------------------------------------------------
     if lgb is not None:
         lg = {}
         ok = True
@@ -285,6 +335,10 @@ def load_all_models():
 
     return models, health
 
+
+# ============================================================
+# 🚀 STEP 9: PREDICTION FUNCTION (RETURN 4 OUTPUTS)
+# ============================================================
 
 def predict_outputs(model_key: str, X_df: pd.DataFrame, models: dict) -> dict:
     X_train = to_train_columns(X_df)
@@ -314,33 +368,40 @@ def predict_outputs(model_key: str, X_df: pd.DataFrame, models: dict) -> dict:
     raise ValueError("Unknown model key")
 
 
+# ============================================================
+# 🚀 STEP 10: BILINEAR CURVE PLOTTER
+# ============================================================
+
 def plot_bilinear(Dy, Fy, Du, Fu):
     """
-    Bilinear curve using points:
-    (0,0) -> (Dy,Fy) -> (Du,Fu)
+    Bilinear curve: (0,0) -> (Dy,Fy) -> (Du,Fu)
     """
-    x = [0.0, Dy, Du]
-    y = [0.0, Fy, Fu]
+    x = [0.0, float(Dy), float(Du)]
+    y = [0.0, float(Fy), float(Fu)]
 
-    fig, ax = plt.subplots(figsize=(5.6, 3.6), dpi=200)
+    fig, ax = plt.subplots(figsize=(5.8, 3.8), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
 
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
     ax.grid(True, alpha=0.3)
 
-    # annotations
-    ax.annotate("Yield (Dy,Fy)", (Dy, Fy), textcoords="offset points", xytext=(8, 8))
-    ax.annotate("Ultimate (Du,Fu)", (Du, Fu), textcoords="offset points", xytext=(8, -12))
+    ax.annotate("Yield (Dy,Fy)", (float(Dy), float(Fy)), textcoords="offset points", xytext=(8, 8))
+    ax.annotate("Ultimate (Du,Fu)", (float(Du), float(Fu)), textcoords="offset points", xytext=(8, -12))
     return fig
 
 
-# =========================
-# UI
-# =========================
+# ============================================================
+# 🚀 STEP 11: LOAD MODELS ONCE
+# ============================================================
+
 MODELS, HEALTH = load_all_models()
 
-# Header with images (if present)
+
+# ============================================================
+# 🚀 STEP 12: HEADER UI (LOGO + SCHEMATIC)
+# ============================================================
+
 left, mid, right = st.columns([1, 2, 1], gap="large")
 
 with left:
@@ -363,6 +424,11 @@ with right:
     if sch:
         st.image(str(sch), use_container_width=True)
 
+
+# ============================================================
+# 🚀 STEP 13: MODEL LOAD STATUS BOX
+# ============================================================
+
 with st.expander("Model load status", expanded=False):
     st.write("✅ Loaded files:")
     st.write(HEALTH["loaded"] if HEALTH["loaded"] else "None")
@@ -377,9 +443,18 @@ if not available:
     st.error("No models loaded. Check requirements.txt and file names in repo.")
     st.stop()
 
-# history
+
+# ============================================================
+# 🚀 STEP 14: SESSION STATE (HISTORY)
+# ============================================================
+
 if "results_df" not in st.session_state:
     st.session_state.results_df = pd.DataFrame(columns=["Time", "Model"] + FEATURES + OUTPUTS)
+
+
+# ============================================================
+# 🚀 STEP 15: MAIN LAYOUT (INPUTS | OUTPUTS)
+# ============================================================
 
 colA, colB = st.columns([1.15, 1.0], gap="large")
 
@@ -393,8 +468,13 @@ with colA:
 
     for i, f in enumerate(FEATURES):
         mn, mx = R.get(f, (0.0, 1.0))
-        step = 0.1 if (mx - mn) <= 20 else 1.0
-        default = float(mn + 0.30 * (mx - mn))
+
+        # keep step logic similar but simple
+        span = float(mx - mn)
+        step = 0.1 if span <= 20 else 1.0
+
+        default = float(mn + 0.30 * span)
+
         with cols[i % 3]:
             user_vals[f] = st.number_input(
                 f"{f}",
@@ -404,9 +484,10 @@ with colA:
                 step=float(step),
             )
 
-    b1, b2, b3 = st.columns([1, 1, 1])
+    b1, b2 = st.columns([1, 1])
     calc = b1.button("Calculate", use_container_width=True)
     clear = b2.button("Clear history", use_container_width=True)
+
 
 with colB:
     st.subheader("Predicted outputs + Bilinear curve")
@@ -420,18 +501,18 @@ with colB:
         try:
             yhat = predict_outputs(model_choice, X_df, MODELS)
 
-            # show outputs table
+            # show outputs
             out_table = pd.DataFrame(
                 {"Output": OUTPUTS, "Predicted": [yhat[o] for o in OUTPUTS]}
             )
             st.dataframe(out_table, use_container_width=True, hide_index=True)
 
-            # plot bilinear
+            # plot
             fig = plot_bilinear(
-                Dy=float(yhat["Dy (mm)"]),
-                Fy=float(yhat["Fy (kN)"]),
-                Du=float(yhat["Du (mm)"]),
-                Fu=float(yhat["Fu (kN)"]),
+                Dy=yhat["Dy (mm)"],
+                Fy=yhat["Fy (kN)"],
+                Du=yhat["Du (mm)"],
+                Fu=yhat["Fu (kN)"],
             )
             st.pyplot(fig, use_container_width=True)
 
@@ -439,6 +520,7 @@ with colB:
             row = {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Model": model_choice}
             row.update(user_vals)
             row.update(yhat)
+
             st.session_state.results_df = pd.concat(
                 [st.session_state.results_df, pd.DataFrame([row])],
                 ignore_index=True
