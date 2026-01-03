@@ -3,7 +3,6 @@ RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI
 - Theta removed
 - 4 outputs: Dy (mm), Fy (kN), Du (mm), Fu (kN)
 - ONLY change: move bilinear curve UP + make it BIGGER
-- Output table stays BELOW the graph (same as your current layout)
 """
 
 # =============================================================================
@@ -136,11 +135,8 @@ def pfind(candidates, must_exist=True):
 # =============================================================================
 # 🎨 STEP 3: STREAMLIT PAGE CONFIGURATION & UI STYLING
 # =============================================================================
-st.set_page_config(
-    page_title="RC Shear Wall Bilinear Curve Estimator",
-    layout="wide",
-    page_icon="🧱",
-)
+st.set_page_config(page_title="RC Shear Wall Bilinear Curve Estimator",
+                   layout="wide", page_icon="🧱")
 
 st.markdown(
     """
@@ -151,14 +147,10 @@ header[data-testid="stHeader"] *{ display:none !important; }
 section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem !important; }
 .vega-embed, .vega-embed .chart-wrapper{ max-width:100% !important; }
 
-/* ✅ ONLY MOVE + ENLARGE THE BILINEAR PLOT (NOTHING ELSE) */
-.plotwrap [data-testid="stPyplot"]{
-  margin-top: -220px !important;   /* move plot UP (more negative = more up) */
-  margin-bottom: 0px !important;
-}
-.plotwrap canvas{
-  width: 100% !important;          /* use full column width */
-  height: auto !important;
+/* ✅ THIS ALWAYS WORKS: MOVE ONLY THE PLOT WRAPPER UP */
+.plotwrap{
+  position: relative !important;
+  top: -260px !important;    /* more negative = move more UP */
 }
 </style>
 """,
@@ -537,14 +529,12 @@ with right:
 
         if not st.session_state.results_df.empty:
             csv = st.session_state.results_df.to_csv(index=False)
-            st.download_button(
-                "📂 Download as CSV",
-                data=csv,
-                file_name="bilinear_predictions.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="dl_csv",
-            )
+            st.download_button("📂 Download as CSV",
+                               data=csv,
+                               file_name="bilinear_predictions.csv",
+                               mime="text/csv",
+                               use_container_width=True,
+                               key="dl_csv")
 
 css("""
 <style>
@@ -624,18 +614,18 @@ def predict_4(choice, input_df):
     return {out: 0.0 for out in OUTPUTS}
 
 
-# ✅ ONLY CHANGE: BIGGER PLOT (height increased) + tighter layout
+# ✅ ONLY CHANGE: BIGGER PLOT
 def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
 
-    fig, ax = plt.subplots(figsize=(11.5, 6.2), dpi=200)  # bigger
+    fig, ax = plt.subplots(figsize=(12.5, 7.0), dpi=200)  # BIGGER
     ax.plot(x, y, marker="o", linewidth=2.5)
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
     ax.grid(True, alpha=0.25)
-    fig.tight_layout()  # remove whitespace
+    fig.tight_layout()
     return fig
 
 
@@ -663,7 +653,7 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.session_state.do_calculation = False
 
 # =============================================================================
-# ✅ STEP 8.2: SHOW GRAPH (ONLY MOVED UP) + TABLE BELOW GRAPH
+# ✅ STEP 8.2: SHOW GRAPH (MOVED UP) + TABLE BELOW GRAPH
 # =============================================================================
 with graph_slot:
     if not st.session_state.results_df.empty:
@@ -675,7 +665,7 @@ with graph_slot:
 
         fig = plot_bilinear(Dy, Fy, Du, Fu)
 
-        # ✅ ONLY CHANGE: wrap pyplot so CSS moves ONLY the plot up
+        # ✅ ONLY THIS moves the plot up
         st.markdown("<div class='plotwrap'>", unsafe_allow_html=True)
         st.pyplot(fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
