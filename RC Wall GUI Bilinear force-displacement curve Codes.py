@@ -399,15 +399,21 @@ MODELS, HEALTH = load_all_models()
 
 
 # ============================================================
-# 🚀 STEP 12: HEADER UI (LOGO + SCHEMATIC)
+# 🚀 STEP 12: HEADER UI (LOGO + SCHEMATIC)  ✅ FIXED (NO CRASH)
 # ============================================================
 
 left, mid, right = st.columns([1, 2, 1], gap="large")
 
 with left:
-    logo = pfind("TJU logo.png")
+    # Try the main logo first (as per error), then fallback to TJU logo
+    logo = pfind("logo2-01.png")
+    if not logo:
+        logo = pfind("TJU logo.png")
+
     if logo:
         st.image(str(logo), use_container_width=True)
+    else:
+        st.warning("Logo image not found (logo2-01.png / TJU logo.png).")
 
 with mid:
     st.markdown(
@@ -420,9 +426,18 @@ with mid:
     )
 
 with right:
-    sch = pfind("RC shear wall schematic2.png")
-    if sch:
-        st.image(str(sch), use_container_width=True)
+    # Try schematic with your exact filename
+    schematic = pfind("RC shear wall schematic2.png")
+
+    # Optional fallback (in case you renamed it)
+    if not schematic:
+        schematic = pfind("RC shear wall schematic2.PNG")
+
+    if schematic:
+        st.image(str(schematic), use_container_width=True)
+    else:
+        st.warning("Schematic image not found (RC shear wall schematic2.png).")
+
 
 
 # ============================================================
@@ -544,3 +559,4 @@ with colB:
             mime="text/csv",
             use_container_width=True
         )
+
