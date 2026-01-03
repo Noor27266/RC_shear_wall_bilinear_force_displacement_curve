@@ -1,7 +1,9 @@
 DOC_NOTES = """
-RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI as your DI app
+RC Shear Wall Bilinear Force–Displacement Curve Estimator — compact, same logic/UI
 - Theta removed
 - 4 outputs: Dy (mm), Fy (kN), Du (mm), Fu (kN)
+- M/(Vlw) placed under fybl
+- Output table compact + bilinear plot small under the two wall images
 """
 
 
@@ -41,7 +43,7 @@ try:
 except Exception:
     _tf_load_model = None
 try:
-    from keras.models import load_model as _k3_load_model
+    from keras.models import load_model as _k3_load_model  # works when keras==3 is present
 except Exception:
     _k3_load_model = None
 
@@ -69,36 +71,75 @@ st.session_state.setdefault("results_df", pd.DataFrame())
 
 
 # =============================================================================
-# ✅ CHANGE 2: DISPLAY OUTPUTS BELOW INPUTS (COMPACT TABLE + CURVE)
+# 🔧 STEP 2: UTILITY FUNCTIONS & HELPER TOOLS
 # =============================================================================
-if not st.session_state.results_df.empty:
-    last = st.session_state.results_df.iloc[-1]
 
-    Dy = float(last["Dy (mm)"])
-    Fy = float(last["Fy (kN)"])
-    Du = float(last["Du (mm)"])
-    Fu = float(last["Fu (kN)"])
+css = lambda s: st.markdown(s, unsafe_allow_html=True)
 
-    with output_below_inputs:
 
-        # Two columns: compact table (left) + plot (right)
-        out_c1, out_c2 = st.columns([1, 2], gap="large")
+def b64(path: Path) -> str:
+    # safe: return "" if not found
+    try:
+        if path and path.exists():
+            return base64.b64encode(path.read_bytes()).decode("ascii")
+    except Exception:
+        pass
+    return ""
 
-        with out_c1:
-            st.markdown("### Predicted outputs")
-            out_df = pd.DataFrame({
-                "Output": OUTPUTS,
-                "Predicted": [Dy, Fy, Du, Fu]
-            })
 
-            # ✅ st.table is compact and won't become a tall scrolling widget
-            st.table(out_df)
+def dv(R, key, proposed):
+    lo, hi = R[key]
+    return float(max(lo, min(proposed, hi)))
 
-        with out_c2:
-            st.markdown("### Bilinear curve")
-            fig = plot_bilinear(Dy, Fy, Du, Fu)
-            st.pyplot(fig, use_container_width=True)
 
+# ---------- path helper ----------
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def pfind(candidates, must_exist=True):
+    """
+    Find first existing file from candidates.
+    must_exist=True  -> raise FileNotFoundError (use for models)
+    must_exist=False -> return None (use for images)
+    """
+    for c in candidates:
+        p = Path(c)
+        if p.exists():
+            return p
+
+    roots = [BASE_DIR, Path.cwd(), Path("/mnt/data")]
+    for root in roots:
+        if not root.exists():
+            continue
+        for c in candidates:
+            p = root / c
+            if p.exists():
+                return p
+
+    for root in [BASE_DIR, Path("/mnt/data")]:
+        if not root.exists():
+            continue
+        for sub in root.iterdir():
+            if sub.is_dir():
+                for c in candidates:
+                    p = sub / c
+                    if p.exists():
+                        return p
+
+    pats = []
+    for c in candidates:
+        for root in [BASE_DIR, Path.cwd(), Path("/mnt/data")]:
+            if root.exists():
+                pats.append(str(root / "**" / c))
+
+    for pat in pats:
+        matches = glob(pat, recursive=True)
+        if matches:
+            return Path(matches[0])
+
+    if must_exist:
+        raise FileNotFoundError(f"None of these files were found: {candidates}")
+    return None
 
 
 # =============================================================================
@@ -279,6 +320,16 @@ css(
 )
 
 # =============================================================================
+# 🎨 STEP 3.4: COMPACT OUTPUT TABLE STYLE (NEW)
+# =============================================================================
+css("""
+<style>
+.small-output-table table { font-size: 12px !important; }
+.small-output-table td, .small-output-table th { padding: 4px 8px !important; }
+</style>
+""")
+
+# =============================================================================
 # 🏷️ LOGO LOADING FOR LEFT PANEL  (UNCHANGED STYLE)
 # =============================================================================
 _logo_file = pfind(["TJU logo.png", "logo2-01.png"], must_exist=False)
@@ -304,6 +355,7 @@ TAG = {
 }
 
 class _ScalerShim:
+    """Wrapper to keep X / y scalers together for ANN models (4 outputs)."""
     def __init__(self, X_scaler, Y_scaler):
         self.Xs = X_scaler
         self.Ys = Y_scaler
@@ -350,7 +402,13 @@ except Exception as e:
 # ---------------------------- Random Forest (MULTI-OUTPUT) -------------------
 rf_model = None
 try:
-    rf_path = pfind(["Best_RF_Model.pkl", "rf_model.pkl", "RF_model.pkl"])
+    rf_path = pfind([
+        "Best_RF_Model.pkl",
+        "random_forest_model.pkl",
+        "random_forest_model.joblib",
+        "rf_model.pkl",
+        "RF_model.pkl",
+    ])
     rf_model = joblib.load(rf_path)
     record_health("Random Forest", True, f"loaded with joblib from {rf_path}")
 except Exception as e:
@@ -439,7 +497,7 @@ R = {
 
 U = lambda s: rf"\;(\mathrm{{{s}}})"
 
-# ✅ CHANGE 1: M/(Vlw) REMOVED from Geometry and will be placed under fybl
+# ✅ M/(Vlw) removed from GEOM (it will appear under fybl in MATS)
 GEOM = [
     (rf"$l_w{U('mm')}$", "lw", 1000.0, 1.0, None, "Length"),
     (rf"$h_w{U('mm')}$", "hw", 495.0, 1.0, None, "Height"),
@@ -449,7 +507,7 @@ GEOM = [
     (r"$AR$", "AR", 2.0, 0.01, None, "Aspect ratio"),
 ]
 
-# ✅ CHANGE 1: M/(Vlw) ADDED at end so it appears below fybl
+# ✅ M/(Vlw) added after fybl (Material Strengths column)
 MATS = [
     (rf"$f'_c{U('MPa')}$", "fc", 40.0, 0.1, None, "Concrete strength"),
     (rf"$f_{{yt}}{U('MPa')}$", "fyt", 400.0, 1.0, None, "Transverse web yield strength"),
@@ -459,6 +517,7 @@ MATS = [
     (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
 ]
 
+# theta removed already
 REINF = [
     (r"$\rho_t\;(\%)$", "rt", 0.25, 0.0001, "%.6f", "Transverse web ratio"),
     (r"$\rho_{sh}\;(\%)$", "rsh", 0.25, 0.0001, "%.6f", "Transverse boundary ratio"),
@@ -526,7 +585,6 @@ with left:
 
     with c1:
         st.markdown("<div class='section-header'>Geometry </div>", unsafe_allow_html=True)
-        # ✅ unpack updated (M_Vlw removed from Geometry)
         lw, hw, tw, b0, db, AR = [num(*row) for row in GEOM]
 
     with c2:
@@ -535,7 +593,6 @@ with left:
 
     with c3:
         st.markdown("<div class='section-header'>Material Strengths</div>", unsafe_allow_html=True)
-        # ✅ unpack updated: M_Vlw now comes after fybl here
         fc, fyt, fysh = [num(*row) for row in MATS[:3]]
         fyl, fybl, M_Vlw = [num(*row) for row in MATS[3:]]
 
@@ -558,6 +615,8 @@ SCHEM2_OFFSET_Y = -40
 CHART_W = 350
 
 with right:
+
+    # --- TWO schematics side by side in fixed-height box ---
     img1 = pfind(["logo2-01.png", "TJU logo.png"], must_exist=False)
     img2 = pfind(["RC shear wall schematic2.png"], must_exist=False)
 
@@ -592,11 +651,18 @@ with right:
 
     col_plot, col_controls = st.columns([3, 1])
 
-    # keep slot but we won't use it now (output moved below inputs)
+    # =============================================================================
+    # ⭐ SUB-STEP 7.1 — GRAPH UNDER THE TWO WALLS (NEW SLOT)
+    # =============================================================================
     with col_plot:
-        chart_slot = st.empty()
+        graph_under_walls = st.container()
+        chart_slot = st.empty()  # keep (unused)
 
+    # =============================================================================
+    # ⭐ SUB-STEP 7.2 — MODEL SELECTION + BUTTONS (RIGHT SIDE) - UNCHANGED
+    # =============================================================================
     with col_controls:
+
         available = set(model_registry.keys())
         ordered_keys = [m for m in MODEL_ORDER if m in available] or ["(no models loaded)"]
         display_labels = ["RF" if m == "Random Forest" else m for m in ordered_keys]
@@ -607,6 +673,7 @@ with right:
             key="model_select_compact",
         )
         model_choice = LABEL_TO_KEY.get(model_choice_label, model_choice_label)
+
         st.session_state["model_choice"] = model_choice
 
         if "do_calculation" not in st.session_state:
@@ -664,7 +731,7 @@ div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
 
 
 # =============================================================================
-# ✅ CHANGE 2: OUTPUT AREA BELOW INPUTS (NEW SLOT)
+# 📌 STEP 7.3: OUTPUT TABLE SLOT BELOW INPUTS (KEEP)
 # =============================================================================
 output_below_inputs = st.container()
 
@@ -713,6 +780,7 @@ def predict_4(choice, input_df):
     df_trees = _df_in_train_order(input_df).replace([np.inf,-np.inf],np.nan).fillna(0.0)
     X = df_trees.values.astype(np.float32)
 
+    # ----- 4-output dict -----
     if choice == "LightGBM":
         return {out: float(model_registry["LightGBM"][out].predict(X)[0]) for out in OUTPUTS}
 
@@ -754,7 +822,8 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
-    fig, ax = plt.subplots(figsize=(4.6, 3.6), dpi=200)
+    # ✅ small graph
+    fig, ax = plt.subplots(figsize=(3.6, 2.2), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
@@ -762,6 +831,9 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     return fig
 
 
+# =============================================================================
+# STEP 8.1: MAIN PREDICTION LOGIC
+# =============================================================================
 model_choice = st.session_state.get("model_choice", None)
 if not model_choice:
     for m in MODEL_ORDER:
@@ -791,7 +863,7 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
 
 
 # =============================================================================
-# ✅ CHANGE 2: DISPLAY OUTPUTS BELOW INPUTS (TABLE + PLOT)
+# ✅ STEP 8.2: OUTPUT TABLE (COMPACT) BELOW INPUTS + SMALL GRAPH UNDER WALLS
 # =============================================================================
 if not st.session_state.results_df.empty:
     last = st.session_state.results_df.iloc[-1]
@@ -801,15 +873,17 @@ if not st.session_state.results_df.empty:
     Du = float(last["Du (mm)"])
     Fu = float(last["Fu (kN)"])
 
+    # --- compact table below inputs (no tall dataframe) ---
     with output_below_inputs:
-        out_df = pd.DataFrame({
-            "Output": OUTPUTS,
-            "Predicted": [Dy, Fy, Du, Fu]
-        })
-        st.dataframe(out_df, use_container_width=True, hide_index=True)
+        st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
+        out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
+        st.table(out_df)
+        st.markdown("</div>", unsafe_allow_html=True)
 
+    # --- graph directly under the two wall images (right panel) ---
+    with graph_under_walls:
         fig = plot_bilinear(Dy, Fy, Du, Fu)
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig, use_container_width=False)
 
 
 # =============================================================================
@@ -832,4 +906,3 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
