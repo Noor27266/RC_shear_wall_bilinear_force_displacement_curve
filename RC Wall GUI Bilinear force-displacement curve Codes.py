@@ -481,6 +481,7 @@ R = {
 
 U = lambda s: rf"\;(\mathrm{{{s}}})"
 
+# ✅ M/(Vlw) REMOVED from Geometry
 GEOM = [
     (rf"$l_w{U('mm')}$", "lw", 1000.0, 1.0, None, "Length"),
     (rf"$h_w{U('mm')}$", "hw", 495.0, 1.0, None, "Height"),
@@ -488,27 +489,18 @@ GEOM = [
     (rf"$b_0{U('mm')}$", "b0", 200.0, 1.0, None, "Boundary element width"),
     (rf"$d_b{U('mm')}$", "db", 400.0, 1.0, None, "Boundary element length"),
     (r"$AR$", "AR", 2.0, 0.01, None, "Aspect ratio"),
-    
 ]
 
+# ✅ M/(Vlw) ADDED at the END of Material Strengths (so it comes after fybl)
 MATS = [
     (rf"$f'_c{U('MPa')}$", "fc", 40.0, 0.1, None, "Concrete strength"),
     (rf"$f_{{yt}}{U('MPa')}$", "fyt", 400.0, 1.0, None, "Transverse web yield strength"),
     (rf"$f_{{ysh}}{U('MPa')}$", "fysh", 400.0, 1.0, None, "Transverse boundary yield strength"),
     (rf"$f_{{yl}}{U('MPa')}$", "fyl", 400.0, 1.0, None, "Vertical web yield strength"),
     (rf"$f_{{ybl}}{U('MPa')}$", "fybl", 400.0, 1.0, None, "Vertical boundary yield strength"),
-    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),
+    (r"$M/(V_{l_w})$", "M_Vlw", 2.0, 0.01, None, "Shear span ratio"),  # ✅ moved here
 ]
 
-# theta row REMOVED only
-REINF = [
-    (r"$\rho_t\;(\%)$", "rt", 0.25, 0.0001, "%.6f", "Transverse web ratio"),
-    (r"$\rho_{sh}\;(\%)$", "rsh", 0.25, 0.0001, "%.6f", "Transverse boundary ratio"),
-    (r"$\rho_l\;(\%)$", "rl", 0.25, 0.0001, "%.6f", "Vertical web ratio"),
-    (r"$\rho_{bl}\;(\%)$", "rbl", 0.25, 0.0001, "%.6f", "Vertical boundary ratio"),
-    (r"$s/d_b$", "s_db", 0.25, 0.01, None, "Hoop spacing ratio"),
-    (r"$P/(A_g f'_c)$", "axial", 0.10, 0.001, None, "Axial Load Ratio"),
-]
 
 def num(label, key, default, step, fmt, help_):
     return st.number_input(
@@ -882,4 +874,5 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
