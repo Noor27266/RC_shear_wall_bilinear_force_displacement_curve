@@ -666,7 +666,7 @@ with graph_slot:
         Fu = float(last["Fu (kN)"])
 
         # ✅ CHANGED ONLY: move plot up (now works because spacer is small)
-        st.markdown("<div style='margin-top:-80px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:-50px;'></div>", unsafe_allow_html=True)
 
         fig = plot_bilinear(Dy, Fy, Du, Fu)
 
