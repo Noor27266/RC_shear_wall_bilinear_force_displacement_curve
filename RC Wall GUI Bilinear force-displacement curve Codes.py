@@ -6,7 +6,7 @@ RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI
 - Wall pictures removed
 - Graph moved to the SAME place (top-right big area)
 - Output table is BELOW the graph (right panel)
-- Graph moved slightly UP + made a bit BIGGER (only)
+- Graph moved UP + made BIGGER (only)
 """
 
 # =============================================================================
@@ -322,7 +322,7 @@ try:
     ann_mlp_proc = _ScalerShim(sx, sy)
     record_health("MLP (ANN)", True, f"loaded from {mlp_model_path}")
 except Exception as e:
-    record_health("MLP (ANN)", False, f"{e}")
+    record_health("MLP (ANN)", False, str(e))
 
 rf_model = None
 try:
@@ -371,18 +371,12 @@ except Exception as e:
     record_health("LightGBM", False, str(e))
 
 model_registry = {}
-if cat_models is not None:
-    model_registry["CatBoost"] = cat_models
-if xgb_models is not None:
-    model_registry["XGBoost"] = xgb_models
-if lgb_models is not None:
-    model_registry["LightGBM"] = lgb_models
-if ann_mlp_model is not None and ann_mlp_proc is not None:
-    model_registry["MLP"] = ann_mlp_model
-if ann_ps_model is not None and ann_ps_proc is not None:
-    model_registry["PS"] = ann_ps_model
-if rf_model is not None:
-    model_registry["Random Forest"] = rf_model
+if cat_models is not None: model_registry["CatBoost"] = cat_models
+if xgb_models is not None: model_registry["XGBoost"] = xgb_models
+if lgb_models is not None: model_registry["LightGBM"] = lgb_models
+if ann_mlp_model is not None and ann_mlp_proc is not None: model_registry["MLP"] = ann_mlp_model
+if ann_ps_model is not None and ann_ps_proc is not None: model_registry["PS"] = ann_ps_model
+if rf_model is not None: model_registry["Random Forest"] = rf_model
 
 MODEL_ORDER = ["CatBoost", "XGBoost", "LightGBM", "MLP", "Random Forest", "PS"]
 LABEL_TO_KEY = {"RF": "Random Forest"}
@@ -453,11 +447,7 @@ def num(label, key, default, step, fmt, help_):
     )
 
 
-css("""
-<style>
-div[data-testid="stNumberInput"] button { display: none !important; }
-</style>
-""")
+css("""<style>div[data-testid="stNumberInput"] button { display: none !important; }</style>""")
 
 # =============================================================================
 # 📊 SUB STEP 6.1: LAYOUT COLUMNS SETUP
@@ -505,8 +495,8 @@ with left:
 # 🎮 STEP 7: RIGHT PANEL - GRAPH PLACE + CONTROLS
 # =============================================================================
 with right:
-    # ✅ Keep the same layout space where the wall pictures were (now empty)
-    st.markdown("<div style='height:300px; margin-bottom:0;'></div>", unsafe_allow_html=True)
+    # ✅ CHANGED ONLY: spacer reduced (was 300px)
+    st.markdown("<div style='height:40px; margin-bottom:0;'></div>", unsafe_allow_html=True)
 
     col_plot, col_controls = st.columns([3, 1])
 
@@ -562,12 +552,10 @@ div[data-testid="stDownloadButton"] {
     height: auto !important;
     margin-right: 20px !important;
 }
-
 div[data-testid="column"]:nth-child(2) {
     margin-top: -30px !important;
     padding-right: 20px !important;
 }
-
 div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
     padding-top: 10px !important;
     padding-right: 20px !important;
@@ -576,7 +564,7 @@ div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
 """)
 
 # =============================================================================
-# ⚡ STEP 8: PREDICTION + OUTPUT (PLOT TOP-RIGHT, TABLE BELOW)
+# ⚡ STEP 8: PREDICTION + OUTPUT
 # =============================================================================
 _TRAIN_NAME_MAP = {
     "l_w": "lw", "h_w": "hw", "t_w": "tw", "f′c": "fc",
@@ -609,30 +597,24 @@ def predict_4(choice, input_df):
 
     if choice == "LightGBM":
         return {out: float(model_registry["LightGBM"][out].predict(X)[0]) for out in OUTPUTS}
-
     if choice == "XGBoost":
         dm = xgb.DMatrix(X)
         return {out: float(model_registry["XGBoost"][out].predict(dm)[0]) for out in OUTPUTS}
-
     if choice == "CatBoost":
         return {out: float(model_registry["CatBoost"][out].predict(X)[0]) for out in OUTPUTS}
-
     if choice == "Random Forest":
         pred = np.array(model_registry["Random Forest"].predict(df_trees)).reshape(1, -1)
         return {OUTPUTS[i]: float(pred[0, i]) for i in range(4)}
-
     if choice == "PS":
         Xn = ann_ps_proc.transform_X(X)
         yhat = model_registry["PS"].predict(Xn, verbose=0)
         y = ann_ps_proc.inverse_transform_y(yhat)[0]
         return {OUTPUTS[i]: float(y[i]) for i in range(4)}
-
     if choice == "MLP":
         Xn = ann_mlp_proc.transform_X(X)
         yhat = model_registry["MLP"].predict(Xn, verbose=0)
         y = ann_mlp_proc.inverse_transform_y(yhat)[0]
         return {OUTPUTS[i]: float(y[i]) for i in range(4)}
-
     return {out: 0.0 for out in OUTPUTS}
 
 
@@ -640,8 +622,8 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
-    # ✅ graph a bit bigger (only change)
-    fig, ax = plt.subplots(figsize=(7.4, 3.6), dpi=200)
+    # ✅ CHANGED ONLY: bigger plot
+    fig, ax = plt.subplots(figsize=(9.2, 4.4), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
@@ -673,7 +655,7 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.session_state.do_calculation = False
 
 # =============================================================================
-# ✅ STEP 8.2: SHOW GRAPH (TOP-RIGHT) + TABLE BELOW GRAPH
+# ✅ STEP 8.2: SHOW GRAPH + TABLE BELOW
 # =============================================================================
 with graph_slot:
     if not st.session_state.results_df.empty:
@@ -683,11 +665,13 @@ with graph_slot:
         Du = float(last["Du (mm)"])
         Fu = float(last["Fu (kN)"])
 
-        # ✅ move a little up (only change)
-        st.markdown("<div style='margin-top:-18px;'></div>", unsafe_allow_html=True)
+        # ✅ CHANGED ONLY: move plot up (now works because spacer is small)
+        st.markdown("<div style='margin-top:-80px;'></div>", unsafe_allow_html=True)
 
         fig = plot_bilinear(Dy, Fy, Du, Fu)
-        st.pyplot(fig, use_container_width=True)
+
+        # ✅ CHANGED ONLY: render at native size (so it really becomes bigger)
+        st.pyplot(fig, use_container_width=False)
 
         st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
         out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
