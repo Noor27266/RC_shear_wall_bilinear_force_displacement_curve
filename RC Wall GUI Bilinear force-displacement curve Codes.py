@@ -6,6 +6,7 @@ RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI
 - Wall pictures removed
 - Graph moved to the SAME place (top-right big area)
 - Output table is BELOW the graph (right panel)
+- Graph moved slightly UP + made a bit BIGGER (only)
 """
 
 # =============================================================================
@@ -138,8 +139,11 @@ def pfind(candidates, must_exist=True):
 # =============================================================================
 # 🎨 STEP 3: STREAMLIT PAGE CONFIGURATION & UI STYLING
 # =============================================================================
-st.set_page_config(page_title="RC Shear Wall Bilinear Curve Estimator",
-                   layout="wide", page_icon="🧱")
+st.set_page_config(
+    page_title="RC Shear Wall Bilinear Curve Estimator",
+    layout="wide",
+    page_icon="🧱",
+)
 
 st.markdown(
     """
@@ -367,12 +371,18 @@ except Exception as e:
     record_health("LightGBM", False, str(e))
 
 model_registry = {}
-if cat_models is not None: model_registry["CatBoost"] = cat_models
-if xgb_models is not None: model_registry["XGBoost"] = xgb_models
-if lgb_models is not None: model_registry["LightGBM"] = lgb_models
-if ann_mlp_model is not None and ann_mlp_proc is not None: model_registry["MLP"] = ann_mlp_model
-if ann_ps_model is not None and ann_ps_proc is not None: model_registry["PS"] = ann_ps_model
-if rf_model is not None: model_registry["Random Forest"] = rf_model
+if cat_models is not None:
+    model_registry["CatBoost"] = cat_models
+if xgb_models is not None:
+    model_registry["XGBoost"] = xgb_models
+if lgb_models is not None:
+    model_registry["LightGBM"] = lgb_models
+if ann_mlp_model is not None and ann_mlp_proc is not None:
+    model_registry["MLP"] = ann_mlp_model
+if ann_ps_model is not None and ann_ps_proc is not None:
+    model_registry["PS"] = ann_ps_model
+if rf_model is not None:
+    model_registry["Random Forest"] = rf_model
 
 MODEL_ORDER = ["CatBoost", "XGBoost", "LightGBM", "MLP", "Random Forest", "PS"]
 LABEL_TO_KEY = {"RF": "Random Forest"}
@@ -495,19 +505,12 @@ with left:
 # 🎮 STEP 7: RIGHT PANEL - GRAPH PLACE + CONTROLS
 # =============================================================================
 with right:
-    # ✅ This is the SAME PLACE where the wall pictures used to be.
-    # We keep a fixed-height container so the layout stays stable.
-    st.markdown(
-        """
-        <div style="height:300px; margin-bottom:0;"></div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # ✅ Keep the same layout space where the wall pictures were (now empty)
+    st.markdown("<div style='height:300px; margin-bottom:0;'></div>", unsafe_allow_html=True)
 
     col_plot, col_controls = st.columns([3, 1])
 
     with col_plot:
-        # ✅ Graph will be shown here (same visual area as walls)
         graph_slot = st.container()
 
     with col_controls:
@@ -538,12 +541,14 @@ with right:
 
         if not st.session_state.results_df.empty:
             csv = st.session_state.results_df.to_csv(index=False)
-            st.download_button("📂 Download as CSV",
-                               data=csv,
-                               file_name="bilinear_predictions.csv",
-                               mime="text/csv",
-                               use_container_width=True,
-                               key="dl_csv")
+            st.download_button(
+                "📂 Download as CSV",
+                data=csv,
+                file_name="bilinear_predictions.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="dl_csv",
+            )
 
 css("""
 <style>
@@ -557,10 +562,12 @@ div[data-testid="stDownloadButton"] {
     height: auto !important;
     margin-right: 20px !important;
 }
+
 div[data-testid="column"]:nth-child(2) {
     margin-top: -30px !important;
     padding-right: 20px !important;
 }
+
 div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
     padding-top: 10px !important;
     padding-right: 20px !important;
@@ -569,7 +576,7 @@ div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
 """)
 
 # =============================================================================
-# ⚡ STEP 8: PREDICTION + PLOT/TABLE OUTPUT (PLOT TOP-RIGHT, TABLE BELOW PLOT)
+# ⚡ STEP 8: PREDICTION + OUTPUT (PLOT TOP-RIGHT, TABLE BELOW)
 # =============================================================================
 _TRAIN_NAME_MAP = {
     "l_w": "lw", "h_w": "hw", "t_w": "tw", "f′c": "fc",
@@ -597,7 +604,7 @@ def _make_input_df(lw,hw,tw,fc,fyt,fysh,fyl,fybl,rt,rsh,rl,rbl,axial,b0,db,s_db,
 
 
 def predict_4(choice, input_df):
-    df_trees = _df_in_train_order(input_df).replace([np.inf,-np.inf], np.nan).fillna(0.0)
+    df_trees = _df_in_train_order(input_df).replace([np.inf, -np.inf], np.nan).fillna(0.0)
     X = df_trees.values.astype(np.float32)
 
     if choice == "LightGBM":
@@ -633,7 +640,7 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
-    # ✅ small plot (fits in that area)
+    # ✅ graph a bit bigger (only change)
     fig, ax = plt.subplots(figsize=(7.4, 3.6), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
     ax.set_xlabel("Displacement (mm)")
@@ -665,7 +672,6 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.error(f"Prediction error: {str(e)}")
         st.session_state.do_calculation = False
 
-
 # =============================================================================
 # ✅ STEP 8.2: SHOW GRAPH (TOP-RIGHT) + TABLE BELOW GRAPH
 # =============================================================================
@@ -677,17 +683,17 @@ with graph_slot:
         Du = float(last["Du (mm)"])
         Fu = float(last["Fu (kN)"])
 
-        st.markdown("<div style='margin-top:-18px;'></div>", unsafe_allow_html=True)  # move up
-fig = plot_bilinear(Dy, Fy, Du, Fu)
-st.pyplot(fig, use_container_width=True)
+        # ✅ move a little up (only change)
+        st.markdown("<div style='margin-top:-18px;'></div>", unsafe_allow_html=True)
 
+        fig = plot_bilinear(Dy, Fy, Du, Fu)
+        st.pyplot(fig, use_container_width=True)
 
         st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
         out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
         st.table(out_df)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        # Empty state (keeps the space stable)
         st.markdown(
             "<div style='height:260px; display:flex; align-items:center; justify-content:center; color:#666;'>"
             "Run <b>Calculate</b> to show the bilinear curve here.</div>",
@@ -714,5 +720,3 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-
