@@ -147,13 +147,10 @@ header[data-testid="stHeader"] *{ display:none !important; }
 section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem !important; }
 .vega-embed, .vega-embed .chart-wrapper{ max-width:100% !important; }
 
-/* ✅ CHANGED: MOVE PLOT HIGHER UP AND SCALE BIGGER */
+/* ✅ THIS ALWAYS WORKS: MOVE ONLY THE PLOT WRAPPER UP */
 .plotwrap{
   position: relative !important;
-  top: -500px !important;    /* Increased from -420px to move higher up */
-  transform: scale(1.15) !important;  /* Added to make it bigger */
-  transform-origin: top center !important;
-  margin-bottom: -400px !important;  /* Added to reduce space below */
+  top: -550px !important;    /* CHANGED: Increased from -420px to -550px to move up more */
 }
 </style>
 """,
@@ -617,18 +614,23 @@ def predict_4(choice, input_df):
     return {out: 0.0 for out in OUTPUTS}
 
 
-# ✅ ONLY CHANGE: BIGGER PLOT
+# ✅ ONLY CHANGE: BIGGER PLOT with bigger axis labels and numbers
 def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
 
-    # CHANGED: Made the figure significantly bigger
-    fig, ax = plt.subplots(figsize=(14.0, 8.5), dpi=200)  # Increased from (12.5, 7.0)
-    ax.plot(x, y, marker="o", linewidth=3.0, markersize=10)  # Thicker line and bigger markers
-    ax.set_xlabel("Displacement (mm)", fontsize=14)  # Bigger font
-    ax.set_ylabel("Force (kN)", fontsize=14)  # Bigger font
-    ax.tick_params(axis='both', which='major', labelsize=12)  # Bigger tick labels
+    # CHANGED: Bigger figure size and bigger font sizes
+    fig, ax = plt.subplots(figsize=(13.0, 7.5), dpi=200)
+    ax.plot(x, y, marker="o", linewidth=2.5)
+    
+    # CHANGED: Bigger axis labels
+    ax.set_xlabel("Displacement (mm)", fontsize=14, fontweight='bold')
+    ax.set_ylabel("Force (kN)", fontsize=14, fontweight='bold')
+    
+    # CHANGED: Bigger tick labels
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    
     ax.grid(True, alpha=0.25)
     fig.tight_layout()
     return fig
