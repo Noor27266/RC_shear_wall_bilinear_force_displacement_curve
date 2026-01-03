@@ -69,70 +69,36 @@ st.session_state.setdefault("results_df", pd.DataFrame())
 
 
 # =============================================================================
-# 🔧 STEP 2: UTILITY FUNCTIONS & HELPER TOOLS
+# ✅ CHANGE 2: DISPLAY OUTPUTS BELOW INPUTS (COMPACT TABLE + CURVE)
 # =============================================================================
+if not st.session_state.results_df.empty:
+    last = st.session_state.results_df.iloc[-1]
 
-css = lambda s: st.markdown(s, unsafe_allow_html=True)
+    Dy = float(last["Dy (mm)"])
+    Fy = float(last["Fy (kN)"])
+    Du = float(last["Du (mm)"])
+    Fu = float(last["Fu (kN)"])
 
+    with output_below_inputs:
 
-def b64(path: Path) -> str:
-    # safe: return "" if not found
-    try:
-        if path and path.exists():
-            return base64.b64encode(path.read_bytes()).decode("ascii")
-    except Exception:
-        pass
-    return ""
+        # Two columns: compact table (left) + plot (right)
+        out_c1, out_c2 = st.columns([1, 2], gap="large")
 
+        with out_c1:
+            st.markdown("### Predicted outputs")
+            out_df = pd.DataFrame({
+                "Output": OUTPUTS,
+                "Predicted": [Dy, Fy, Du, Fu]
+            })
 
-def dv(R, key, proposed):
-    lo, hi = R[key]
-    return float(max(lo, min(proposed, hi)))
+            # ✅ st.table is compact and won't become a tall scrolling widget
+            st.table(out_df)
 
+        with out_c2:
+            st.markdown("### Bilinear curve")
+            fig = plot_bilinear(Dy, Fy, Du, Fu)
+            st.pyplot(fig, use_container_width=True)
 
-# ---------- path helper ----------
-BASE_DIR = Path(__file__).resolve().parent
-
-
-def pfind(candidates, must_exist=True):
-    """
-    Find first existing file from candidates.
-    must_exist=True  -> raise FileNotFoundError (use for models)
-    must_exist=False -> return None (use for images)
-    """
-    for c in candidates:
-        p = Path(c)
-        if p.exists():
-            return p
-    roots = [BASE_DIR, Path.cwd(), Path("/mnt/data")]
-    for root in roots:
-        if not root.exists():
-            continue
-        for c in candidates:
-            p = root / c
-            if p.exists():
-                return p
-    for root in [BASE_DIR, Path("/mnt/data")]:
-        if not root.exists():
-            continue
-        for sub in root.iterdir():
-            if sub.is_dir():
-                for c in candidates:
-                    p = sub / c
-                    if p.exists():
-                        return p
-    pats = []
-    for c in candidates:
-        for root in [BASE_DIR, Path.cwd(), Path("/mnt/data")]:
-            if root.exists():
-                pats.append(str(root / "**" / c))
-    for pat in pats:
-        matches = glob(pat, recursive=True)
-        if matches:
-            return Path(matches[0])
-    if must_exist:
-        raise FileNotFoundError(f"None of these files were found: {candidates}")
-    return None
 
 
 # =============================================================================
@@ -866,3 +832,4 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
