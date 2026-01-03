@@ -677,8 +677,10 @@ with graph_slot:
         Du = float(last["Du (mm)"])
         Fu = float(last["Fu (kN)"])
 
-        fig = plot_bilinear(Dy, Fy, Du, Fu)
-        st.pyplot(fig, use_container_width=True)
+        st.markdown("<div style='margin-top:-18px;'></div>", unsafe_allow_html=True)  # move up
+fig = plot_bilinear(Dy, Fy, Du, Fu)
+st.pyplot(fig, use_container_width=True)
+
 
         st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
         out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
@@ -712,4 +714,5 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
