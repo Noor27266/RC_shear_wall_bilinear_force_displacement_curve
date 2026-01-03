@@ -56,9 +56,11 @@ st.set_page_config(page_title="RC Wall Bilinear Curve GUI", layout="wide")
 # 🚀 STEP 3: FILE SEARCH UTILITIES (ROBUST FOR STREAMLIT CLOUD)
 # ============================================================
 
+from pathlib import Path
+
 def pfind(fname: str) -> Path | None:
     """
-    Find file in common locations:
+    Find a file in common locations:
     - repo root
     - models/ model/ assets/ data/
     - fallback recursive search
@@ -80,6 +82,22 @@ def pfind(fname: str) -> Path | None:
     for p in Path(".").rglob(fname):
         return p.resolve()
 
+    return None
+
+
+# ============================================================
+# 🚀 SUB STEP 3.1: SAFE IMAGE PATH (NEVER CRASHES)
+# ============================================================
+
+def safe_image_path(*candidates: str) -> str | None:
+    """
+    Returns a valid path string for the first image found.
+    Never raises FileNotFoundError.
+    """
+    for name in candidates:
+        p = pfind(name)
+        if p:
+            return str(p)
     return None
 
 
@@ -399,21 +417,36 @@ MODELS, HEALTH = load_all_models()
 
 
 # ============================================================
-# 🚀 STEP 12: HEADER UI (LOGO + SCHEMATIC)  ✅ FIXED (NO CRASH)
+# 🚀 STEP 12: HEADER UI (LOGO + SCHEMATIC) ✅ FIXED (NO CRASH)
 # ============================================================
+
+import base64
+import streamlit as st
 
 left, mid, right = st.columns([1, 2, 1], gap="large")
 
 with left:
-    # Try the main logo first (as per error), then fallback to TJU logo
-    logo = pfind("logo2-01.png")
-    if not logo:
-        logo = pfind("TJU logo.png")
+    # --- SAFE LOGO (supports both logo files you have) ---
+    logo_path = safe_image_path("logo2-01.png", "TJU logo.png")
 
-    if logo:
-        st.image(str(logo), use_container_width=True)
+    # If you want simple image:
+    # if logo_path:
+    #     st.image(logo_path, use_container_width=True)
+
+    # If you want your old base64 HTML style (recommended if you used it before):
+    if logo_path:
+        with open(logo_path, "rb") as f:
+            base64_logo = base64.b64encode(f.read()).decode()
+        st.markdown(
+            f"""
+            <div style='text-align: center; margin-top: 10px;'>
+                <img src='data:image/png;base64,{base64_logo}' width='550'>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     else:
-        st.warning("Logo image not found (logo2-01.png / TJU logo.png).")
+        st.warning("Logo not found (logo2-01.png / TJU logo.png).")
 
 with mid:
     st.markdown(
@@ -426,17 +459,11 @@ with mid:
     )
 
 with right:
-    # Try schematic with your exact filename
-    schematic = pfind("RC shear wall schematic2.png")
-
-    # Optional fallback (in case you renamed it)
-    if not schematic:
-        schematic = pfind("RC shear wall schematic2.PNG")
-
-    if schematic:
-        st.image(str(schematic), use_container_width=True)
+    schematic_path = safe_image_path("RC shear wall schematic2.png", "RC shear wall schematic2.PNG")
+    if schematic_path:
+        st.image(schematic_path, use_container_width=True)
     else:
-        st.warning("Schematic image not found (RC shear wall schematic2.png).")
+        st.warning("Schematic not found (RC shear wall schematic2.png).")
 
 
 
@@ -559,4 +586,5 @@ with colB:
             mime="text/csv",
             use_container_width=True
         )
+
 
