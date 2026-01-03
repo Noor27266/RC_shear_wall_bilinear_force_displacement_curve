@@ -6,7 +6,7 @@ RC Shear Wall Bilinear Force–Displacement Curve Estimator — same logic/UI
 - Wall pictures removed
 - Graph moved to the SAME place (top-right big area)
 - Output table is BELOW the graph (right panel)
-- Graph moved UP + made BIGGER (only)
+- ONLY bilinear curve moved up + made bigger (no other UI change)
 """
 
 # =============================================================================
@@ -139,11 +139,8 @@ def pfind(candidates, must_exist=True):
 # =============================================================================
 # 🎨 STEP 3: STREAMLIT PAGE CONFIGURATION & UI STYLING
 # =============================================================================
-st.set_page_config(
-    page_title="RC Shear Wall Bilinear Curve Estimator",
-    layout="wide",
-    page_icon="🧱",
-)
+st.set_page_config(page_title="RC Shear Wall Bilinear Curve Estimator",
+                   layout="wide", page_icon="🧱")
 
 st.markdown(
     """
@@ -153,6 +150,11 @@ header[data-testid="stHeader"]{ height:0 !important; padding:0 !important; backg
 header[data-testid="stHeader"] *{ display:none !important; }
 section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem !important; }
 .vega-embed, .vega-embed .chart-wrapper{ max-width:100% !important; }
+
+/* ✅ ONLY MOVE THE PLOT UP (NOTHING ELSE) */
+.plot-up-only{
+  transform: translateY(-65px);
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -322,7 +324,7 @@ try:
     ann_mlp_proc = _ScalerShim(sx, sy)
     record_health("MLP (ANN)", True, f"loaded from {mlp_model_path}")
 except Exception as e:
-    record_health("MLP (ANN)", False, str(e))
+    record_health("MLP (ANN)", False, f"{e}")
 
 rf_model = None
 try:
@@ -495,8 +497,8 @@ with left:
 # 🎮 STEP 7: RIGHT PANEL - GRAPH PLACE + CONTROLS
 # =============================================================================
 with right:
-    # ✅ CHANGED ONLY: spacer reduced (was 300px)
-    st.markdown("<div style='height:40px; margin-bottom:0;'></div>", unsafe_allow_html=True)
+    # ✅ keep SAME spacer & layout (unchanged)
+    st.markdown("<div style='height:300px; margin-bottom:0;'></div>", unsafe_allow_html=True)
 
     col_plot, col_controls = st.columns([3, 1])
 
@@ -531,14 +533,12 @@ with right:
 
         if not st.session_state.results_df.empty:
             csv = st.session_state.results_df.to_csv(index=False)
-            st.download_button(
-                "📂 Download as CSV",
-                data=csv,
-                file_name="bilinear_predictions.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="dl_csv",
-            )
+            st.download_button("📂 Download as CSV",
+                               data=csv,
+                               file_name="bilinear_predictions.csv",
+                               mime="text/csv",
+                               use_container_width=True,
+                               key="dl_csv")
 
 css("""
 <style>
@@ -564,7 +564,7 @@ div[data-testid="column"]:nth-child(2) > div:nth-child(2) {
 """)
 
 # =============================================================================
-# ⚡ STEP 8: PREDICTION + OUTPUT
+# ⚡ STEP 8: PREDICTION + OUTPUT (PLOT TOP-RIGHT, TABLE BELOW PLOT)
 # =============================================================================
 _TRAIN_NAME_MAP = {
     "l_w": "lw", "h_w": "hw", "t_w": "tw", "f′c": "fc",
@@ -592,7 +592,7 @@ def _make_input_df(lw,hw,tw,fc,fyt,fysh,fyl,fybl,rt,rsh,rl,rbl,axial,b0,db,s_db,
 
 
 def predict_4(choice, input_df):
-    df_trees = _df_in_train_order(input_df).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    df_trees = _df_in_train_order(input_df).replace([np.inf,-np.inf], np.nan).fillna(0.0)
     X = df_trees.values.astype(np.float32)
 
     if choice == "LightGBM":
@@ -622,8 +622,8 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     import matplotlib.pyplot as plt
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
-    # ✅ CHANGED ONLY: bigger plot
-    fig, ax = plt.subplots(figsize=(9.2, 4.4), dpi=200)
+    # ✅ bigger plot (only)
+    fig, ax = plt.subplots(figsize=(9.0, 4.8), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
@@ -655,7 +655,7 @@ if st.session_state.get("do_calculation", False) and model_choice and model_choi
         st.session_state.do_calculation = False
 
 # =============================================================================
-# ✅ STEP 8.2: SHOW GRAPH + TABLE BELOW
+# ✅ STEP 8.2: SHOW GRAPH (ONLY MOVED UP) + TABLE BELOW GRAPH
 # =============================================================================
 with graph_slot:
     if not st.session_state.results_df.empty:
@@ -665,13 +665,12 @@ with graph_slot:
         Du = float(last["Du (mm)"])
         Fu = float(last["Fu (kN)"])
 
-        # ✅ CHANGED ONLY: move plot up (now works because spacer is small)
-        st.markdown("<div style='margin-top:-50px;'></div>", unsafe_allow_html=True)
-
         fig = plot_bilinear(Dy, Fy, Du, Fu)
 
-        # ✅ CHANGED ONLY: render at native size (so it really becomes bigger)
-        st.pyplot(fig, use_container_width=False)
+        # ✅ ONLY PLOT MOVES UP (not UI)
+        st.markdown("<div class='plot-up-only'>", unsafe_allow_html=True)
+        st.pyplot(fig, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<div class='small-output-table'>", unsafe_allow_html=True)
         out_df = pd.DataFrame({"Output": OUTPUTS, "Predicted": [Dy, Fy, Du, Fu]})
