@@ -150,7 +150,7 @@ section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem
 /* ✅ THIS ALWAYS WORKS: MOVE ONLY THE PLOT WRAPPER UP */
 .plotwrap{
   position: relative !important;
-  top: -260px !important;    /* more negative = move more UP */
+  top: -420px !important;    /* more negative = move more UP */
 }
 </style>
 """,
@@ -701,3 +701,4 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
