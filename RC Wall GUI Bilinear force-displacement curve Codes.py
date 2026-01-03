@@ -634,7 +634,7 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
     # ✅ small plot (fits in that area)
-    fig, ax = plt.subplots(figsize=(6.0, 3.0), dpi=200)
+    fig, ax = plt.subplots(figsize=(7.4, 3.6), dpi=200)
     ax.plot(x, y, marker="o", linewidth=2)
     ax.set_xlabel("Displacement (mm)")
     ax.set_ylabel("Force (kN)")
@@ -712,3 +712,4 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
