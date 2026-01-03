@@ -147,10 +147,13 @@ header[data-testid="stHeader"] *{ display:none !important; }
 section.main > div.block-container{ padding-top:0 !important; margin-top:-2.5rem !important; }
 .vega-embed, .vega-embed .chart-wrapper{ max-width:100% !important; }
 
-/* ✅ THIS ALWAYS WORKS: MOVE ONLY THE PLOT WRAPPER UP */
+/* ✅ CHANGED: MOVE PLOT HIGHER UP AND SCALE BIGGER */
 .plotwrap{
   position: relative !important;
-  top: -420px !important;    /* more negative = move more UP */
+  top: -500px !important;    /* Increased from -420px to move higher up */
+  transform: scale(1.15) !important;  /* Added to make it bigger */
+  transform-origin: top center !important;
+  margin-bottom: -400px !important;  /* Added to reduce space below */
 }
 </style>
 """,
@@ -620,10 +623,12 @@ def plot_bilinear(Dy, Fy, Du, Fu):
     x = [0.0, float(Dy), float(Du)]
     y = [0.0, float(Fy), float(Fu)]
 
-    fig, ax = plt.subplots(figsize=(12.5, 7.0), dpi=200)  # BIGGER
-    ax.plot(x, y, marker="o", linewidth=2.5)
-    ax.set_xlabel("Displacement (mm)")
-    ax.set_ylabel("Force (kN)")
+    # CHANGED: Made the figure significantly bigger
+    fig, ax = plt.subplots(figsize=(14.0, 8.5), dpi=200)  # Increased from (12.5, 7.0)
+    ax.plot(x, y, marker="o", linewidth=3.0, markersize=10)  # Thicker line and bigger markers
+    ax.set_xlabel("Displacement (mm)", fontsize=14)  # Bigger font
+    ax.set_ylabel("Force (kN)", fontsize=14)  # Bigger font
+    ax.tick_params(axis='both', which='major', labelsize=12)  # Bigger tick labels
     ax.grid(True, alpha=0.25)
     fig.tight_layout()
     return fig
@@ -701,4 +706,3 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
